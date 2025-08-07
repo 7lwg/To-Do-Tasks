@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:todo_app_task/data/models/toDos_data_model.dart';
 
 bool hidePassword = true;
@@ -59,7 +59,9 @@ List<String> profileLabes = [
 ];
 
 final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-QRViewController? controller;
+MobileScannerController? controller = MobileScannerController(
+  formats: [BarcodeFormat.qrCode], // Only scan QR codes
+);
 bool isCameraActive = false;
 bool isScanning = false;
 

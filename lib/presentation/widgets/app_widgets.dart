@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:todo_app_task/business_logic/cubit/auth_cubit/auth_cubit.dart';
 import 'package:todo_app_task/business_logic/cubit/toDos_cubit/to_dos_data_cubit.dart';
 import 'package:todo_app_task/constants/colors.dart';
@@ -667,16 +667,22 @@ Widget taskDetailsContainers(
   );
 }
 
-// Qr code
-void _onQRViewCreated(QRViewController qrController, BuildContext context) {
-  controller = qrController;
-  qrController.scannedDataStream.listen((scanData) {
-    if (!isScanning) {
+// QR code scanner with mobile_scanner
+void _onQRCodeDetected(BarcodeCapture barcodeCapture, BuildContext context) {
+  if (!isScanning && barcodeCapture.barcodes.isNotEmpty) {
+    // Double-check it's a QR code
+    final barcode = barcodeCapture.barcodes.first;
+    if (barcode.format != BarcodeFormat.qrCode) return;
+    
+    final String? scannedQRCode = barcode.rawValue;
+    
+    if (scannedQRCode != null) {
       taksDetailsIndex =
-          toDosDataList.indexWhere((element) => element.sId == scanData.code);
+          toDosDataList.indexWhere((element) => element.sId == scannedQRCode);
 
       isScanning = true; // Prevent multiple scans
-      controller?.pauseCamera(); // Pause camera after scanning
+      controller?.stop(); // Stop camera after scanning
+      
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -689,7 +695,7 @@ void _onQRViewCreated(QRViewController qrController, BuildContext context) {
         isScanning = false;
       });
     }
-  });
+  }
 }
 
 void _toggleCamera(
@@ -698,9 +704,9 @@ void _toggleCamera(
   toDosDataCubit.emit(ToDoDataQrScan());
   isCameraActive = !isCameraActive;
   if (isCameraActive) {
-    controller?.resumeCamera(); // Open camera
+    controller?.start(); // Start camera
   } else {
-    controller?.stopCamera(); // Close camera
+    controller?.stop(); // Stop camera
   }
 }
 
@@ -721,7 +727,7 @@ Widget cameraQrScanner(
                   borderRadius: BorderRadius.circular(30), // Rounded corners
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.5), // Shadow color
+                      color: Colors.grey.withValues(alpha: 0.5), // Shadow color
                       spreadRadius: 4, // Shadow spread
                       blurRadius: 8, // Shadow blur
                       offset: const Offset(0, 3), // Shadow offset
@@ -740,10 +746,15 @@ Widget cameraQrScanner(
                           borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(30),
                               topRight: Radius.circular(30)),
-                          child: QRView(
-                            key: qrKey,
-                            onQRViewCreated: (QRViewController controller) =>
-                                _onQRViewCreated(controller, context),
+                          child: MobileScanner(
+                            controller: controller,
+                            onDetect: (BarcodeCapture barcodeCapture) =>
+                                _onQRCodeDetected(barcodeCapture, context),
+                            scanWindow: Rect.fromCenter(
+                              center: const Offset(150, 150),
+                              width: 250,
+                              height: 250,
+                            ),
                           ),
                         ),
                       ),
